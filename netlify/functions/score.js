@@ -78,6 +78,24 @@ async function callClaude(apiKey, model, prompt, maxTokens) {
   return { ok: res.ok, status: res.status, json: json };
 }
 
+function extractText(json) {
+  const blocks = (json && json.content) || [];
+  return blocks.map((b) => (b && b.type === "text" && typeof b.text === "string" ? b.text : "")).join("");
+}
+
+function blockSummary(json) {
+  const blocks = (json && json.content) || [];
+  return blocks.map((b) => (b && b.type) || "?").join(",") || "(none)";
+}
+
+function extractJsonObject(text) {
+  const clean = String(text || "").replace(/```json/g, "").replace(/```/g, "").trim();
+  const first = clean.indexOf("{");
+  const last = clean.lastIndexOf("}");
+  if (first === -1 || last === -1 || last <= first) return null;
+  try { return JSON.parse(clean.slice(first, last + 1)); } catch (e) { return null; }
+}
+
 const reply = (status, obj) => ({
   statusCode: status,
   headers: { "content-type": "application/json; charset=utf-8" },
@@ -96,8 +114,20 @@ exports.handler = async (event) => {
     const tried = [];
     for (const m of models) {
       try {
-        const r = await callClaude(apiKey, m, "Reply with the single word: OK", 16);
-        if (r.ok) return reply(200, { ping: "OK", model: m, keyPrefix: apiKey.slice(0, 12) + "…", tried: tried });
+        const r = await callClaude(apiKey, m, "Reply with the single word: OK", 64);
+        if (r.ok) {
+          const t = extractText(r.json).trim();
+          return reply(200, {
+            ping: t ? "OK" : "NG",
+            model: m,
+            keyPrefix: apiKey.slice(0, 12) + "…",
+            sample: t.slice(0, 40),
+            blocks: blockSummary(r.json),
+            stop_reason: r.json && r.json.stop_reason,
+            reason: t ? undefined : "モデルからテキストが返りませんでした",
+            tried: tried,
+          });
+        }
         tried.push({ model: m, status: r.status, error: (r.json && r.json.error && r.json.error.message) || "unknown" });
       } catch (e) {
         tried.push({ model: m, status: 0, error: String(e && e.message) });
@@ -119,7 +149,7 @@ exports.handler = async (event) => {
   for (const model of models) {
     let r;
     try {
-      r = await callClaude(apiKey, model, prompt, 1100);
+      r = await callClaude(apiKey, model, prompt, 4000);
     } catch (e) {
       tried.push({ model: model, status: 0, error: "通信エラー: " + String(e && e.message) });
       continue;
@@ -131,15 +161,17 @@ exports.handler = async (event) => {
       if (r.status === 404) continue;
       return reply(502, { error: "採点APIがエラーを返しました", detail: em, status: r.status, tried: tried });
     }
-    const text = (r.json.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-    const clean = text.replace(/```json|```/g, "").trim();
-    try {
-      const parsed = JSON.parse(clean);
-      if (!parsed || !parsed.scores) throw new Error("scores がありません");
-      return reply(200, parsed);
-    } catch (e) {
-      return reply(502, { error: "採点結果の読み取りに失敗しました", detail: clip(clean, 300), model: model });
-    }
+    const text = extractText(r.json);
+    const parsed = extractJsonObject(text);
+    if (parsed && parsed.scores) return reply(200, parsed);
+    return reply(502, {
+      error: "採点結果の読み取りに失敗しました",
+      detail: clip(text, 300) || "(モデルからテキストが返りませんでした)",
+      model: model,
+      blocks: blockSummary(r.json),
+      stop_reason: r.json && r.json.stop_reason,
+      usage: r.json && r.json.usage,
+    });
   }
 
   return reply(502, { error: "利用できるモデルが見つかりませんでした", tried: tried });
