@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHUNDEN 英語体力測定｜瞬伝英会話</title>
+<meta name="description" content="あなたの英語運用力を約10分で測定。音読・瞬間作文・スモールトークの3種目で点数化し、自然な英語への添削フィードバックをお届けします。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #17233B;
+    --bg: #F2F4F1;
+    --tape: #FFC53D;
+    --rec: #D93A2B;
+    --sub: #5A6478;
+    --line: #DDE1DA;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 48px; }
+  .digits { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-variant-numeric: tabular-nums; }
+  .card {
+    background: #fff; border: 1.5px solid var(--ink); border-radius: 12px;
+    padding: 20px 18px; box-shadow: 4px 4px 0 rgba(23,35,59,.12); margin-bottom: 16px;
+  }
+  .tape {
+    display: inline-block; background: var(--tape); color: var(--ink); font-weight: 800;
+    font-size: 12px; letter-spacing: .12em; padding: 4px 10px; border-radius: 4px;
+    border: 1.5px solid var(--ink);
+  }
+  .label { font-size: 12px; font-weight: 700; color: var(--sub); letter-spacing: .08em; }
+  button { font-family: inherit; cursor: pointer; }
+  button:active { transform: translate(2px,2px); box-shadow: none !important; }
+  .btn-primary {
+    display: block; width: 100%; background: var(--ink); color: #fff;
+    border: 1.5px solid var(--ink); border-radius: 10px; padding: 14px 16px;
+    font-size: 16px; font-weight: 700; box-shadow: 3px 3px 0 var(--tape);
+  }
+  .btn-ghost {
+    display: block; width: 100%; background: #fff; color: var(--ink);
+    border: 1.5px solid var(--ink); border-radius: 10px; padding: 12px 16px;
+    font-size: 14px; font-weight: 700;
+  }
+  .btn-rec {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    background: var(--rec); color: #fff; border: 1.5px solid var(--ink); border-radius: 10px;
+    padding: 14px 16px; font-size: 16px; font-weight: 800;
+    box-shadow: 3px 3px 0 rgba(23,35,59,.25);
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .header { padding: 20px 0 14px; }
+  .header-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .brand-sub { font-size: 11px; font-weight: 700; letter-spacing: .2em; color: var(--sub); }
+  .brand { font-size: 20px; font-weight: 900; }
+  .progress { margin-top: 12px; height: 8px; background: var(--line); border-radius: 4px; border: 1px solid var(--ink); overflow: hidden; }
+  .progress > div { height: 100%; background: var(--tape); transition: width .4s; }
+  .target-box { background: var(--ink); color: #fff; border-radius: 8px; padding: 16px 14px; margin-bottom: 6px; font-size: 17px; font-weight: 700; line-height: 1.6; }
+  .ja-sub { font-size: 12.5px; color: var(--sub); margin-bottom: 14px; }
+  .live-box { min-height: 56px; background: var(--bg); border: 1px dashed #9AA3B2; border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; }
+  .err-box { background: #FBEAE8; border: 1px solid var(--ink); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.7; margin-bottom: 12px; }
+  .ok-box { background: #EAF4EA; border: 1px solid var(--ink); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+  .rec-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--rec); display: inline-block; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  textarea {
+    width: 100%; min-height: 90px; border: 1.5px solid var(--ink); border-radius: 8px;
+    padding: 10px 12px; font-size: 15px; font-family: inherit; resize: vertical;
+  }
+  .prompt-yellow { background: var(--tape); border: 1.5px solid var(--ink); border-radius: 8px; padding: 16px 14px; margin-bottom: 6px; font-size: 18px; font-weight: 900; line-height: 1.6; }
+  .countdown-num { font-size: 110px; font-weight: 600; line-height: 1.1; }
+  .fb-natural { background: #EAF4EA; border-left: 4px solid var(--ink); border-radius: 0 8px 8px 0; padding: 8px 12px; margin-bottom: 6px; }
+  a.line-btn {
+    display: block; text-align: center; background: #06C755; color: #fff; border-radius: 10px;
+    padding: 14px 16px; font-size: 15px; font-weight: 800; text-decoration: none; border: 1.5px solid #fff;
+  }
+</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   SHUNDEN 英語体力測定 — 公開版（Netlify）
+   ============================================================ */
+
+const LINE_URL = "https://lin.ee/9kYiWgl";
+const SCORE_ENDPOINT = "/.netlify/functions/score";
+
+const READING_TASKS = [
+  { target: "I usually get up at six and take a short walk before breakfast.",
+    ja: "私はたいてい6時に起きて、朝食前に軽く散歩します。" },
+  { target: "Could you tell me the best way to get to the station from here?",
+    ja: "ここから駅までの一番いい行き方を教えていただけますか？" },
+];
+const COMPOSITION_TASKS = [
+  { ja: "駅までどのくらいかかりますか？", hint: "所要時間をたずねる" },
+  { ja: "すみません、もう一度言ってもらえますか？", hint: "聞き返す" },
+  { ja: "それはいい考えですね。私もそう思います。", hint: "同意する" },
+];
+const TALK_TASKS = [
+  { question: "How's your day going so far?", ja: "今日はここまでどんな一日ですか？" },
+  { question: "What do you usually do on weekends?", ja: "週末はいつも何をしていますか？" },
+];
+const READ_LIMIT = 60, COMP_LIMIT = 20, TALK_LIMIT = 30;
+
+/* ---------- state ---------- */
+const state = {
+  mode: "voice",          // voice | text
+  taskIndex: 0,
+  reading: [], comp: [], talk: [],
+  report: null,
+  textStartAt: 0,
+};
+
+/* ---------- utils ---------- */
+const $ = (id) => document.getElementById(id);
+const app = () => $("app");
+const esc = (s) => String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const tokenize = (s) => (s || "").toLowerCase().replace(/[^a-z0-9'\s]/g, " ").split(/\s+/).filter(Boolean);
+
+function matchPercent(target, spoken) {
+  const t = tokenize(target), sp = tokenize(spoken);
+  if (!t.length) return 0;
+  const bag = {};
+  sp.forEach((w) => (bag[w] = (bag[w] || 0) + 1));
+  let hit = 0;
+  t.forEach((w) => { if (bag[w] > 0) { hit++; bag[w]--; } });
+  return Math.round((hit / t.length) * 100);
+}
+const calcWPM = (tr, ms) => Math.round((tokenize(tr).length / Math.max(ms / 1000, 1)) * 60);
+const speechSupported = () => !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+const MIC_GUIDE = {
+  "not-allowed": "マイクの使用が許可されていません。ブラウザのアドレスバー付近のマイクアイコンから、このサイトのマイクを「許可」にしてください。",
+  "service-not-allowed": "この環境では音声認識が利用できません。ChromeまたはSafariで開き直してください。LINE内で開いている場合は、右上メニューから「ブラウザで開く」を選んでください。",
+  "network": "音声認識サービスに接続できませんでした。通信環境をご確認ください（Chrome推奨）。",
+  "audio-capture": "マイクが見つかりません。マイクの接続をご確認ください。",
+  "no-speech": "音声が検出されませんでした。マイクに近づいてはっきり話してみてください。",
+};
+
+function speakEnglish(text) {
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US"; u.rate = 0.95;
+    const v = window.speechSynthesis.getVoices().find((x) => x.lang && x.lang.startsWith("en"));
+    if (v) u.voice = v;
+    window.speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ---------- recorder ---------- */
+const rec = {
+  obj: null, finalText: "", interim: "", errCode: "",
+  startAt: 0, firstAt: 0, lastAt: 0,
+  timer: null, limiter: null, stopped: true,
+  onUpdate: null, onDone: null,
+
+  start(limitSec, onUpdate, onDone) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this.errCode = "service-not-allowed"; return false; }
+    this.cleanup();
+    this.finalText = ""; this.interim = ""; this.errCode = "";
+    this.startAt = Date.now(); this.firstAt = 0; this.lastAt = 0;
+    this.stopped = false; this.onUpdate = onUpdate; this.onDone = onDone;
+
+    const r = new SR();
+    r.lang = "en-US"; r.continuous = true; r.interimResults = true;
+    r.onresult = (ev) => {
+      const now = Date.now();
+      if (!this.firstAt) this.firstAt = now;
+      this.lastAt = now;
+      let it = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res.isFinal) this.finalText += res[0].transcript + " ";
+        else it += res[0].transcript;
+      }
+      this.interim = it;
+      if (this.onUpdate) this.onUpdate();
+    };
+    r.onerror = (ev) => { if (ev && ev.error) this.errCode = ev.error; };
+    r.onend = () => { if (!this.stopped) this.finish(); };
+    this.obj = r;
+    try { r.start(); } catch (e) { this.errCode = "start-failed"; return false; }
+    this.timer = setInterval(() => { if (this.onUpdate) this.onUpdate(); }, 250);
+    if (limitSec) this.limiter = setTimeout(() => this.stop(), limitSec * 1000);
+    return true;
+  },
+  stop() {
+    if (this.stopped) return;
+    this.stopped = true;
+    try { if (this.obj) this.obj.stop(); } catch (e) {}
+    this.finish();
+  },
+  finish() {
+    this.stopped = true;
+    this.cleanup();
+    if (this.onDone) { const cb = this.onDone; this.onDone = null; cb(); }
+  },
+  abort() {
+    this.stopped = true;
+    this.onDone = null;
+    this.cleanup();
+    try { if (this.obj) this.obj.abort(); } catch (e) {}
+  },
+  cleanup() {
+    if (this.timer) clearInterval(this.timer);
+    if (this.limiter) clearTimeout(this.limiter);
+    this.timer = null; this.limiter = null;
+  },
+  elapsedSec() { return Math.floor((Date.now() - this.startAt) / 1000); },
+  transcript() { return this.finalText.trim(); },
+};
+
+/* ---------- shared views ---------- */
+const totalSteps = () =>
+  (state.mode === "text" ? 0 : READING_TASKS.length) + COMPOSITION_TASKS.length + TALK_TASKS.length;
+
+function header(tag, done) {
+  const prog = done == null ? "" :
+    '<div class="progress"><div style="width:' + Math.round((done / totalSteps()) * 100) + '%"></div></div>';
+  return '<div class="header"><div class="header-row"><div>' +
+    '<div class="brand-sub">瞬伝英会話 SHUNDEN</div><div class="brand">英語体力測定</div></div>' +
+    (tag ? '<span class="tape">' + tag + "</span>" : "") + "</div>" + prog + "</div>";
+}
+
+function micErrBox() {
+  if (!rec.errCode) return "";
+  const msg = MIC_GUIDE[rec.errCode] || "音声認識でエラーが発生しました（コード: " + esc(rec.errCode) + "）。もう一度お試しください。";
+  return '<div class="err-box"><b>⚠ マイクエラー</b><br>' + msg + "</div>";
+}
+
+function timerHTML(limit) {
+  const e = rec.elapsedSec();
+  return '<span class="rec-dot"></span>' +
+    '<span class="digits" style="font-size:44px;font-weight:600;margin:0 6px">' +
+    Math.floor(e / 60) + ":" + String(e % 60).padStart(2, "0") + "</span>" +
+    (limit ? '<span class="digits" style="font-size:16px;color:var(--sub)">/ ' + limit + "秒</span>" : "");
+}
+
+function liveHTML() {
+  const t = esc(rec.transcript()), i = esc(rec.interim);
+  return t || i
+    ? t + ' <span style="color:#9AA3B2">' + i + "</span>"
+    : '<span style="color:#9AA3B2">（認識された英語がここに表示されます）</span>';
+}
+
+function recordingBlock(limit, stopLabel) {
+  return '<div style="text-align:center;margin:12px 0">' +
+    '<div id="timer" style="display:inline-flex;align-items:center">' + timerHTML(limit) + "</div>" +
+    '<div style="font-size:12px;color:var(--sub);font-weight:700">計測中 — 英語で話してください</div></div>' +
+    '<div id="live" class="live-box">' + liveHTML() + "</div>" +
+    '<button id="btn-stop" class="btn-rec">■ ' + stopLabel + "</button>";
+}
+
+function bindRecording(limit, onStopped) {
+  $("btn-stop").onclick = () => rec.stop();
+  rec.onUpdate = () => {
+    if ($("timer")) $("timer").innerHTML = timerHTML(limit);
+    if ($("live")) $("live").innerHTML = liveHTML();
+  };
+  rec.onDone = onStopped;
+}
+
+function confirmBlock(nextLabel) {
+  const t = rec.transcript();
+  const empty = tokenize(t).length === 0;
+  return micErrBox() +
+    '<div class="label" style="margin-bottom:6px">認識された発話</div>' +
+    '<div style="background:' + (empty ? "#FBEAE8" : "var(--bg)") + ';border:1px solid var(--ink);border-radius:8px;padding:10px 12px;font-size:15px;margin-bottom:12px">' +
+    (empty ? "（音声を認識できませんでした）" : esc(t)) + "</div>" +
+    '<div class="grid2"><button id="btn-retry" class="btn-ghost">やり直す</button>' +
+    '<button id="btn-next" class="btn-primary">' + (empty ? "このまま次へ" : nextLabel) + "</button></div>";
+}
+
+/* ---------- countdown ---------- */
+function showCountdown(label, sub, cb) {
+  let n = 3;
+  const draw = () => {
+    app().innerHTML = header(label, null) +
+      '<div class="card" style="text-align:center;padding:52px 18px">' +
+      '<div class="label">' + esc(sub) + "</div>" +
+      '<div class="digits countdown-num">' + n + "</div></div>";
+  };
+  draw();
+  const iv = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(iv); cb(); } else draw();
+  }, 1000);
+}
+
+/* ---------- screens ---------- */
+function renderIntro() {
+  const isText = state.mode === "text";
+  const rows = [
+    ["種目 1", "音読", "英文を声に出して読む — 明瞭度と流暢さを計測", "2問", !isText],
+    ["種目 2", "瞬間作文", "日本語を見て即座に英語で言う — 瞬発力を計測", "3問", true],
+    ["種目 3", "スモールトーク", "英語の質問に答える — 対話力を計測", "2問", true],
+  ].map((r) =>
+    '<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);opacity:' + (r[4] ? 1 : 0.35) + '">' +
+    '<div class="digits" style="font-size:13px;font-weight:600;background:var(--ink);color:var(--tape);border-radius:4px;padding:2px 8px;white-space:nowrap">' + r[0] + "</div>" +
+    '<div style="flex:1"><div style="font-weight:800;font-size:15px">' + r[1] +
+    ' <span style="font-weight:500;font-size:12px;color:var(--sub)">（' + r[3] + "）</span>" +
+    (!r[4] ? ' <span style="font-size:11px;color:var(--rec);font-weight:700">タイピングモードでは省略</span>' : "") +
+    '</div><div style="font-size:12.5px;color:var(--sub);line-height:1.6">' + r[2] + "</div></div></div>"
+  ).join("");
+
+  app().innerHTML = header() +
+    '<div class="card" style="border-width:2px">' +
+    '<span class="tape">約10分・全' + totalSteps() + "種目</span>" +
+    '<h2 style="font-size:24px;font-weight:900;margin:12px 0 8px;line-height:1.4">あなたの「英語の体力」を<br>測定します</h2>' +
+    '<p style="font-size:14px;line-height:1.9;margin:0 0 16px">英語は体育。知識の量ではなく、<b>口から出るかどうか</b>が本当の実力です。3つの種目であなたの英語運用力を点数化し、「こう言うと自然」という添削フィードバックをお届けします。</p>' +
+    rows + "</div>" +
+    (!speechSupported() && !isText
+      ? '<div class="err-box"><b>⚠ このブラウザは音声認識に対応していません</b><br>ChromeまたはSafariで開き直してください。LINE内で開いている場合は、右上メニューから「ブラウザで開く」を選んでください。マイクなしで受ける場合はタイピングモードをご利用ください。</div>'
+      : "") +
+    '<button id="btn-start" class="btn-primary">測定をはじめる →</button>' +
+    '<button id="btn-mode" class="btn-ghost" style="margin-top:10px;font-size:12.5px">' +
+    (isText ? "🎙️ 音声モードに切り替える" : "⌨️ マイクが使えない場合：タイピングモード") + "</button>" +
+    '<p style="font-size:11.5px;color:var(--sub);text-align:center;margin-top:12px;line-height:1.6">' +
+    (isText ? "タイピングモードでは、明瞭度・流暢さは測定されません。"
+            : "静かな場所でお試しください。最初の録音時にマイクの使用許可を求められたら「許可」を押してください。") + "</p>" +
+    '<div id="ping-result" style="margin-top:14px"></div>' +
+    '<button id="btn-ping" style="display:block;width:100%;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:700;text-decoration:underline;padding:6px">採点AIの接続テスト（運営者用）</button>';
+
+  $("btn-start").onclick = () => {
+    state.reading = []; state.comp = []; state.talk = []; state.taskIndex = 0;
+    if (state.mode === "text") showCountdown("種目2 瞬間作文", "日本語が出たら、すぐ英語で書く", renderComposition);
+    else showCountdown("種目1 音読", "英文を声に出して読んでください", renderReading);
+  };
+  $("btn-mode").onclick = () => { state.mode = state.mode === "text" ? "voice" : "text"; renderIntro(); };
+  $("btn-ping").onclick = pingCheck;
+}
+
+/* --- 種目1 音読 --- */
+function renderReading() {
+  const i = state.taskIndex, task = READING_TASKS[i];
+  const done = i;
+  app().innerHTML = header("種目1 音読", done) +
+    '<div class="card">' +
+    '<div class="label" style="margin-bottom:8px">' + (i + 1) + " / " + READING_TASKS.length +
+    "　次の英文を、声に出して読んでください（最大" + READ_LIMIT + "秒）</div>" +
+    '<div class="target-box">' + esc(task.target) + "</div>" +
+    '<div class="ja-sub">' + esc(task.ja) + "</div>" +
+    '<div id="zone">' + micErrBox() + '<button id="btn-rec" class="btn-rec">🎙️ 録音開始</button></div></div>';
+
+  $("btn-rec").onclick = () => {
+    const ok = rec.start(READ_LIMIT, null, null);
+    if (!ok) { renderReading(); return; }
+    $("zone").innerHTML = recordingBlock(READ_LIMIT, "録音停止");
+    bindRecording(READ_LIMIT, () => {
+      $("zone").innerHTML = confirmBlock("次へ");
+      $("btn-retry").onclick = () => { rec.abort(); renderReading(); };
+      $("btn-next").onclick = () => {
+        const ms = rec.firstAt ? Math.max(rec.lastAt - rec.firstAt, 1000) : 0;
+        const tr = rec.transcript();
+        state.reading.push({
+          target: task.target, transcript: tr,
+          matchPct: matchPercent(task.target, tr),
+          wpm: tr ? calcWPM(tr, ms) : 0,
+          durationMs: ms,
+        });
+        if (i + 1 < READING_TASKS.length) { state.taskIndex++; renderReading(); }
+        else { state.taskIndex = 0; showCountdown("種目2 瞬間作文", "日本語が出たら、すぐ英語で言う", renderComposition); }
+      };
+    });
+  };
+}
+
+/* --- 種目2 瞬間作文 --- */
+function renderComposition() {
+  const i = state.taskIndex, task = COMPOSITION_TASKS[i];
+  const isText = state.mode === "text";
+  const done = (isText ? 0 : READING_TASKS.length) + i;
+
+  const saveAndNext = (transcript, latencyMs) => {
+    state.comp.push({ ja: task.ja, transcript: transcript, latencyMs: latencyMs });
+    if (i + 1 < COMPOSITION_TASKS.length) {
+      state.taskIndex++;
+      showCountdown("種目2 瞬間作文", "次のお題です。日本語が出たら、すぐ英語で" + (isText ? "書く" : "言う"), renderComposition);
+    } else {
+      state.taskIndex = 0;
+      showCountdown("種目3 スモールトーク", "英語の質問に、英語で答えてください", renderTalk);
+    }
+  };
+
+  const base = header("種目2 瞬間作文", done) +
+    '<div class="card">' +
+    '<div class="label" style="margin-bottom:8px">' + (i + 1) + " / " + COMPOSITION_TASKS.length +
+    "　これを英語で" + (isText ? "書いてみましょう" : "言ってみましょう（制限" + COMP_LIMIT + "秒）") + "</div>" +
+    '<div class="prompt-yellow">「' + esc(task.ja) + "」</div>" +
+    '<div class="ja-sub">ヒント: ' + esc(task.hint) + "</div>" +
+    '<div id="zone"></div></div>';
+
+  if (isText) {
+    app().innerHTML = base;
+    state.textStartAt = Date.now();
+    $("zone").innerHTML = '<textarea id="ta" placeholder="英語で入力…"></textarea>' +
+      '<button id="btn-submit" class="btn-primary" style="margin-top:12px">これで回答する</button>';
+    $("btn-submit").onclick = () => saveAndNext($("ta").value.trim(), Date.now() - state.textStartAt);
+    return;
+  }
+
+  // 音声：お題表示と同時に自動で計測開始（瞬発力測定）
+  app().innerHTML = base;
+  const ok = rec.start(COMP_LIMIT, null, null);
+  if (!ok) {
+    $("zone").innerHTML = micErrBox() + '<button id="btn-retry2" class="btn-ghost">もう一度試す</button>';
+    $("btn-retry2").onclick = renderComposition;
+    return;
+  }
+  $("zone").innerHTML = recordingBlock(COMP_LIMIT, "言い終わった");
+  bindRecording(COMP_LIMIT, () => {
+    $("zone").innerHTML = confirmBlock("次へ");
+    $("btn-retry").onclick = () => { rec.abort(); showCountdown("種目2 瞬間作文", "もう一度。日本語が出たら、すぐ英語で言う", renderComposition); };
+    $("btn-next").onclick = () => {
+      const latency = rec.firstAt ? rec.firstAt - rec.startAt : COMP_LIMIT * 1000;
+      saveAndNext(rec.transcript(), latency);
+    };
+  });
+}
+
+/* --- 種目3 スモールトーク --- */
+function renderTalk() {
+  const i = state.taskIndex, task = TALK_TASKS[i];
+  const isText = state.mode === "text";
+  const done = (isText ? 0 : READING_TASKS.length) + COMPOSITION_TASKS.length + i;
+  const isLast = i + 1 >= TALK_TASKS.length;
+
+  const saveAndNext = (transcript, durationMs) => {
+    state.talk.push({ question: task.question, transcript: transcript, durationMs: durationMs });
+    if (!isLast) { state.taskIndex++; renderTalk(); }
+    else analyze();
+  };
+
+  app().innerHTML = header("種目3 スモールトーク", done) +
+    '<div class="card">' +
+    '<div class="label" style="margin-bottom:8px">' + (i + 1) + " / " + TALK_TASKS.length +
+    "　質問に英語で答えてください（" + (isText ? "長く書けるほど高得点" : "制限" + TALK_LIMIT + "秒・長く話せるほど高得点") + "）</div>" +
+    '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;border-radius:8px;padding:14px;margin-bottom:6px">' +
+    '<div style="font-size:22px">🗣️</div><div style="font-size:17px;font-weight:700;line-height:1.6">' + esc(task.question) + "</div></div>" +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+    '<span style="font-size:12.5px;color:var(--sub)">' + esc(task.ja) + "</span>" +
+    '<button id="btn-tts" style="background:none;border:1px solid var(--ink);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--ink)">🔊 質問を聞く</button></div>' +
+    '<div id="zone"></div></div>';
+
+  $("btn-tts").onclick = () => speakEnglish(task.question);
+  speakEnglish(task.question);
+
+  if (isText) {
+    $("zone").innerHTML = '<textarea id="ta" placeholder="英語で入力…"></textarea>' +
+      '<button id="btn-submit" class="btn-primary" style="margin-top:12px">' +
+      (isLast ? "これで回答して採点へ" : "これで回答する") + "</button>";
+    $("btn-submit").onclick = () => saveAndNext($("ta").value.trim(), 0);
+    return;
+  }
+
+  const drawIdle = () => {
+    $("zone").innerHTML = micErrBox() + '<button id="btn-rec" class="btn-rec">🎙️ 録音して答える</button>';
+    $("btn-rec").onclick = () => {
+      const ok = rec.start(TALK_LIMIT, null, null);
+      if (!ok) { drawIdle(); return; }
+      $("zone").innerHTML = recordingBlock(TALK_LIMIT, "言い終わった");
+      bindRecording(TALK_LIMIT, () => {
+        $("zone").innerHTML = confirmBlock(isLast ? "測定終了・採点へ" : "次へ");
+        $("btn-retry").onclick = () => { rec.abort(); drawIdle(); };
+        $("btn-next").onclick = () => {
+          const ms = rec.firstAt ? Math.max(rec.lastAt - rec.firstAt, 1000) : 0;
+          saveAndNext(rec.transcript(), ms);
+        };
+      });
+    };
+  };
+  drawIdle();
+}
+
+/* --- 採点 --- */
+async function analyze() {
+  app().innerHTML = header("採点中", totalSteps()) +
+    '<div class="card" style="text-align:center;padding:48px 18px">' +
+    '<div style="font-size:40px;margin-bottom:12px">⏱️</div>' +
+    '<div style="font-size:18px;font-weight:900;margin-bottom:8px">記録を集計しています…</div>' +
+    '<p style="font-size:13px;color:var(--sub);line-height:1.8;margin:0">AIコーチがあなたの回答を採点し、<br>添削フィードバックを作成中です（10〜30秒）</p>' +
+    '<div id="waited" class="digits" style="font-size:13px;color:#9AA3B2;margin-top:10px">0秒</div></div>';
+
+  let sec = 0;
+  const iv = setInterval(() => { sec++; if ($("waited")) $("waited").textContent = sec + "秒"; }, 1000);
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), 60000);
+
+  const fail = (title, detail) => {
+    app().innerHTML = header("採点エラー") +
+      '<div class="card"><div style="font-size:16px;font-weight:900;margin-bottom:8px">' + esc(title) + "</div>" +
+      (detail ? '<div class="err-box" style="word-break:break-all">' + esc(detail) + "</div>" : "") +
+      '<p style="font-size:12.5px;color:var(--sub);line-height:1.8">回答内容は保持されています。「もう一度採点する」で再送信できます。</p>' +
+      '<button id="btn-retry" class="btn-primary">もう一度採点する</button></div>';
+    $("btn-retry").onclick = analyze;
+  };
+
+  try {
+    const res = await fetch(SCORE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: state.mode, reading: state.reading, comp: state.comp, talk: state.talk }),
+      signal: ctrl.signal,
+    });
+    const raw = await res.text();
+    let json = null;
+    try { json = JSON.parse(raw); } catch (e) {}
+
+    if (res.status === 404) { fail("採点プログラムが見つかりません（404）", "Netlifyに Functions が反映されていない可能性があります。netlify フォルダを含めてフォルダごと再デプロイしてください。"); return; }
+    if (!res.ok) {
+      const d = json ? (json.error || "") + (json.detail ? "／" + json.detail : "") + (json.hint ? "／" + json.hint : "") + (json.tried ? "／" + JSON.stringify(json.tried) : "") : raw.slice(0, 300);
+      fail("採点でエラーが返りました（HTTP " + res.status + "）", d);
+      return;
+    }
+    if (!json || !json.scores) { fail("採点結果を読み取れませんでした", raw.slice(0, 300)); return; }
+    state.report = json;
+    renderResults();
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      fail("採点が時間内に終わりませんでした（60秒でタイムアウト）", "Netlifyの関数の実行時間上限に達した可能性があります。「もう一度採点する」をお試しください。");
+    } else {
+      fail("通信エラーが発生しました", String(e && e.message));
+    }
+  } finally {
+    clearInterval(iv);
+    clearTimeout(killer);
+  }
+}
+
+/* --- 疎通確認 --- */
+async function pingCheck() {
+  const box = $("ping-result");
+  if (!box) return;
+  box.innerHTML = '<div class="label">確認中…</div>';
+  try {
+    const res = await fetch(SCORE_ENDPOINT, { method: "GET" });
+    const raw = await res.text();
+    let j = null;
+    try { j = JSON.parse(raw); } catch (e) {}
+    if (res.status === 404) {
+      box.innerHTML = '<div class="err-box"><b>NG：採点プログラムが見つかりません（404）</b><br>netlifyフォルダを含めて、フォルダごと再デプロイしてください。</div>';
+      return;
+    }
+    if (j && j.ping === "OK") {
+      box.innerHTML = '<div class="ok-box"><b>OK：採点AIに接続できました</b><br><span style="font-size:12px;color:var(--sub)">モデル: ' + esc(j.model) + " ／ キー: " + esc(j.keyPrefix) + "</span></div>";
+      return;
+    }
+    const reason = j ? (j.reason || j.error || "") + (j.tried ? "／" + JSON.stringify(j.tried) : "") : raw.slice(0, 300);
+    box.innerHTML = '<div class="err-box" style="word-break:break-all"><b>NG：接続できませんでした</b><br>' + esc(reason) + "</div>";
+  } catch (e) {
+    box.innerHTML = '<div class="err-box"><b>NG：通信エラー</b><br>' + esc(String(e && e.message)) + "</div>";
+  }
+}
+
+/* --- 結果 --- */
+function renderResults() {
+  const r = state.report, sc = r.scores || {};
+  const isText = state.mode === "text";
+  const axes = [
+    ["明瞭度", sc.pronunciation], ["流暢さ", sc.fluency], ["正確さ", sc.accuracy],
+    ["瞬発力", sc.quickness], ["対話力", sc.conversation],
+  ];
+  const measured = axes.filter((a) => typeof a[1] === "number" && a[1] >= 0);
+  const avgWpm = state.reading.length ? Math.round(state.reading.reduce((a, x) => a + (x.wpm || 0), 0) / state.reading.length) : 0;
+  const avgMatch = state.reading.length ? Math.round(state.reading.reduce((a, x) => a + (x.matchPct || 0), 0) / state.reading.length) : 0;
+
+  const fb = (r.feedback || []).map((f, idx) =>
+    '<div style="border-top:' + (idx === 0 ? "none" : "1px solid var(--line)") + ';padding:12px 0">' +
+    '<div style="font-size:12px;font-weight:800;color:var(--sub);margin-bottom:6px">【' + esc(f.section) + "】" + esc(f.prompt) + "</div>" +
+    (f.you && tokenize(f.you).length
+      ? '<div style="font-size:14px;margin-bottom:6px"><span style="font-size:11px;font-weight:800;color:#9AA3B2;margin-right:6px">YOU</span>' + esc(f.you) + "</div>" : "") +
+    '<div class="fb-natural"><span style="font-size:11px;font-weight:800;color:#2E6B3E;margin-right:6px">NATURAL</span>' +
+    '<span style="font-size:15px;font-weight:700">' + esc(f.natural) + "</span></div>" +
+    '<div style="font-size:13px;color:#39425A;line-height:1.7">' + esc(f.comment) + "</div></div>"
+  ).join("");
+
+  app().innerHTML = header("測定記録カード") +
+    '<div class="card" style="border-width:2px;text-align:center;position:relative;overflow:hidden">' +
+    '<div style="position:absolute;top:0;left:0;right:0;height:10px;background:repeating-linear-gradient(90deg,var(--tape) 0 24px,var(--ink) 24px 26px)"></div>' +
+    '<div class="label" style="margin-top:10px">総合スコア' + (isText ? "（タイピングモード）" : "") + "</div>" +
+    '<div class="digits" style="font-size:72px;font-weight:600;line-height:1.1">' + (sc.total ?? "-") +
+    '<span style="font-size:22px;color:var(--sub)"> / 100</span></div>' +
+    '<div style="display:inline-block;margin-top:6px;transform:rotate(-2deg)"><span class="tape" style="font-size:15px;padding:6px 16px">' + esc(r.level || "") + "</span></div></div>" +
+
+    '<div class="card"><div class="label" style="margin-bottom:4px">項目別バランス</div>' +
+    '<div style="width:100%;height:250px"><canvas id="radar"></canvas></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center;margin-top:8px">' +
+    axes.map((a) =>
+      '<div><div class="digits" style="font-size:20px;font-weight:600;color:' + (a[1] >= 0 ? "var(--ink)" : "#B7BDC9") + '">' +
+      (a[1] >= 0 ? a[1] : "—") + '</div><div style="font-size:10.5px;color:var(--sub);font-weight:700">' + a[0] +
+      (a[1] < 0 ? '<div style="font-size:9px;color:#9AA3B2">未測定</div>' : "") + "</div></div>"
+    ).join("") + "</div>" +
+    (!isText && state.reading.length
+      ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;gap:18px;justify-content:center;font-size:12px;color:var(--sub);font-weight:700">' +
+        "<span>音読スピード <b style='color:var(--ink)'>" + avgWpm + " WPM</b></span>" +
+        "<span>聞き取られ率 <b style='color:var(--ink)'>" + avgMatch + "%</b></span></div>"
+      : "") + "</div>" +
+
+    '<div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+    '<span class="tape">コーチの添削</span><span style="font-size:12px;color:var(--sub);font-weight:700">こう言うと自然な英語に！</span></div>' + fb + "</div>" +
+
+    '<div class="card" style="background:var(--ink);color:#fff">' +
+    '<div style="font-size:13px;font-weight:800;color:var(--tape);margin-bottom:8px">コーチからの総合アドバイス</div>' +
+    '<p style="font-size:14px;line-height:1.9;margin:0 0 16px">' + esc(r.advice || "") + "</p>" +
+    '<a class="line-btn" href="' + LINE_URL + '" target="_blank" rel="noopener noreferrer">LINEで結果の解説＋練習メニューを受け取る</a>' +
+    '<p style="font-size:11px;color:#B9C0D0;text-align:center;margin:10px 0 0;line-height:1.6">瞬伝英会話の公式LINEで、あなたのレベルに合ったトレーニング方法をご案内します</p></div>' +
+
+    '<button id="btn-again" class="btn-ghost">もう一度測定する</button>' +
+    '<p style="font-size:10.5px;color:#9AA3B2;text-align:center;margin-top:14px;line-height:1.6">※ 明瞭度は音声認識の聞き取り精度に基づく簡易評価です。マイク環境により結果が変動します。</p>';
+
+  $("btn-again").onclick = () => { state.report = null; renderIntro(); };
+
+  new Chart($("radar"), {
+    type: "radar",
+    data: {
+      labels: measured.map((a) => a[0]),
+      datasets: [{
+        data: measured.map((a) => a[1]),
+        backgroundColor: "rgba(255,197,61,.55)",
+        borderColor: "#17233B",
+        borderWidth: 2,
+        pointBackgroundColor: "#17233B",
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false },
+          grid: { color: "#C9CFC6" },
+          angleLines: { color: "#C9CFC6" },
+          pointLabels: { color: "#17233B", font: { size: 12, weight: "bold", family: "'Zen Kaku Gothic New', sans-serif" } },
+        },
+      },
+    },
+  });
+}
+
+renderIntro();
+</script>
+</body>
+</html>
