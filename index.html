@@ -144,6 +144,9 @@ const MIC_GUIDE = {
   "network": "音声認識サービスに接続できませんでした。通信環境をご確認ください（Chrome推奨）。",
   "audio-capture": "マイクが見つかりません。マイクの接続をご確認ください。",
   "no-speech": "音声が検出されませんでした。マイクに近づいてはっきり話してみてください。",
+  "NotAllowedError": "マイクの使用が許可されていません。アドレスバー左の鍵（またはスライダー）アイコンをタップし、マイクを「許可」に変更してからページを再読み込みしてください。",
+  "NotFoundError": "マイクが見つかりません。マイクが接続されているかご確認ください。",
+  "NotReadableError": "マイクを他のアプリが使用中の可能性があります。他のアプリを閉じてお試しください。",
 };
 
 function speakEnglish(text) {
@@ -158,6 +161,17 @@ function speakEnglish(text) {
 }
 
 /* ---------- recorder ---------- */
+async function ensureMicPermission() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return "";
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    st.getTracks().forEach((t) => t.stop());
+    return "";
+  } catch (e) {
+    return (e && e.name) || "not-allowed";
+  }
+}
+
 const rec = {
   obj: null, finalText: "", interim: "", errCode: "",
   startAt: 0, firstAt: 0, lastAt: 0,
@@ -323,6 +337,7 @@ function renderIntro() {
     (!speechSupported() && !isText
       ? '<div class="err-box"><b>⚠ このブラウザは音声認識に対応していません</b><br>ChromeまたはSafariで開き直してください。LINE内で開いている場合は、右上メニューから「ブラウザで開く」を選んでください。マイクなしで受ける場合はタイピングモードをご利用ください。</div>'
       : "") +
+    micErrBox() +
     '<button id="btn-start" class="btn-primary">測定をはじめる →</button>' +
     '<button id="btn-mode" class="btn-ghost" style="margin-top:10px;font-size:12.5px">' +
     (isText ? "🎙️ 音声モードに切り替える" : "⌨️ マイクが使えない場合：タイピングモード") + "</button>" +
@@ -332,8 +347,12 @@ function renderIntro() {
     '<div id="ping-result" style="margin-top:14px"></div>' +
     '<button id="btn-ping" style="display:block;width:100%;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:700;text-decoration:underline;padding:6px">採点AIの接続テスト（運営者用）</button>';
 
-  $("btn-start").onclick = () => {
+  $("btn-start").onclick = async () => {
     state.reading = []; state.comp = []; state.talk = []; state.taskIndex = 0;
+    if (state.mode !== "text") {
+      const perr = await ensureMicPermission();
+      if (perr) { rec.errCode = perr; renderIntro(); return; }
+    }
     if (state.mode === "text") showCountdown("種目2 瞬間作文", "日本語が出たら、すぐ英語で書く", renderComposition);
     else showCountdown("種目1 音読", "英文を声に出して読んでください", renderReading);
   };
@@ -353,7 +372,9 @@ function renderReading() {
     '<div class="ja-sub">' + esc(task.ja) + "</div>" +
     '<div id="zone">' + micErrBox() + '<button id="btn-rec" class="btn-rec">🎙️ 録音開始</button></div></div>';
 
-  $("btn-rec").onclick = () => {
+  $("btn-rec").onclick = async () => {
+    const perr = await ensureMicPermission();
+    if (perr) { rec.errCode = perr; renderReading(); return; }
     const ok = rec.start(READ_LIMIT, null, null);
     if (!ok) { renderReading(); return; }
     $("zone").innerHTML = recordingBlock(READ_LIMIT, "録音停止");
@@ -466,7 +487,9 @@ function renderTalk() {
 
   const drawIdle = () => {
     $("zone").innerHTML = micErrBox() + '<button id="btn-rec" class="btn-rec">🎙️ 録音して答える</button>';
-    $("btn-rec").onclick = () => {
+    $("btn-rec").onclick = async () => {
+      const perr = await ensureMicPermission();
+      if (perr) { rec.errCode = perr; drawIdle(); return; }
       const ok = rec.start(TALK_LIMIT, null, null);
       if (!ok) { drawIdle(); return; }
       $("zone").innerHTML = recordingBlock(TALK_LIMIT, "言い終わった");
@@ -519,7 +542,12 @@ async function analyze() {
 
     if (res.status === 404) { fail("採点プログラムが見つかりません（404）", "Netlifyに Functions が反映されていない可能性があります。netlify フォルダを含めてフォルダごと再デプロイしてください。"); return; }
     if (!res.ok) {
-      const d = json ? (json.error || "") + (json.detail ? "／" + json.detail : "") + (json.hint ? "／" + json.hint : "") + (json.tried ? "／" + JSON.stringify(json.tried) : "") : raw.slice(0, 300);
+      const d = json
+        ? [json.error, json.detail, json.hint,
+           json.blocks ? "blocks=" + json.blocks : "",
+           json.stop_reason ? "stop=" + json.stop_reason : "",
+           json.tried ? JSON.stringify(json.tried) : ""].filter(Boolean).join("／")
+        : raw.slice(0, 300);
       fail("採点でエラーが返りました（HTTP " + res.status + "）", d);
       return;
     }
