@@ -1,7 +1,3 @@
 [build]
-  publish = "public"
+  publish = "."
   functions = "netlify/functions"
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
