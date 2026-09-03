@@ -61,7 +61,8 @@ feedback は瞬間作文とスモールトークの各項目について、自�
 }
 
 async function callClaude(apiKey, model, prompt, maxTokens) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const base = process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com";
+  const res = await fetch(base + "/v1/messages", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -96,18 +97,18 @@ function extractJsonObject(text) {
   try { return JSON.parse(clean.slice(first, last + 1)); } catch (e) { return null; }
 }
 
-const reply = (status, obj) => ({
-  statusCode: status,
-  headers: { "content-type": "application/json; charset=utf-8" },
-  body: JSON.stringify(obj),
-});
+const reply = (status, obj) =>
+  new Response(JSON.stringify(obj), {
+    status: status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
 
-exports.handler = async (event) => {
+export default async (req) => {
   const apiKey = process.env ? process.env.ANTHROPIC_API_KEY : null;
   const models = modelCandidates();
 
   /* --- 疎通確認モード（GET） --- */
-  if (event.httpMethod === "GET") {
+  if (req.method === "GET") {
     if (!apiKey) {
       return reply(200, { ping: "NG", reason: "ANTHROPIC_API_KEY が設定されていません（Netlifyの環境変数を設定 → 再デプロイしてください）" });
     }
@@ -120,7 +121,6 @@ exports.handler = async (event) => {
           return reply(200, {
             ping: t ? "OK" : "NG",
             model: m,
-            keyPrefix: apiKey.slice(0, 12) + "…",
             sample: t.slice(0, 40),
             blocks: blockSummary(r.json),
             stop_reason: r.json && r.json.stop_reason,
@@ -136,11 +136,11 @@ exports.handler = async (event) => {
     return reply(200, { ping: "NG", reason: "APIに接続できませんでした", tried: tried });
   }
 
-  if (event.httpMethod !== "POST") return reply(405, { error: "Method Not Allowed" });
+  if (req.method !== "POST") return reply(405, { error: "Method Not Allowed" });
   if (!apiKey) return reply(500, { error: "ANTHROPIC_API_KEY が設定されていません", hint: "Netlifyの環境変数を設定したあと、もう一度デプロイしてください" });
 
   let data;
-  try { data = JSON.parse(event.body || "{}"); }
+  try { data = JSON.parse((await req.text()) || "{}"); }
   catch (e) { return reply(400, { error: "リクエストの形式が不正です" }); }
 
   const prompt = buildPrompt(data);
