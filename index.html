@@ -160,6 +160,10 @@ function speakEnglish(text) {
   } catch (e) {}
 }
 
+function isDebugMode() {
+  try { return new URLSearchParams(location.search).get("debug") === "1"; } catch (e) { return false; }
+}
+
 /* ---------- recorder ---------- */
 async function ensureMicPermission() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return "";
@@ -185,6 +189,8 @@ const rec = {
     this.finalText = ""; this.interim = ""; this.errCode = "";
     this.startAt = Date.now(); this.firstAt = 0; this.lastAt = 0;
     this.stopped = false; this.onUpdate = onUpdate; this.onDone = onDone;
+    this.limitSec = limitSec || 0;
+    this.restarts = 0;
 
     const r = new SR();
     r.lang = "en-US"; r.continuous = true; r.interimResults = true;
@@ -202,7 +208,19 @@ const rec = {
       if (this.onUpdate) this.onUpdate();
     };
     r.onerror = (ev) => { if (ev && ev.error) this.errCode = ev.error; };
-    r.onend = () => { if (!this.stopped) this.finish(); };
+    r.onend = () => {
+      if (this.stopped) return;
+      const fatal = ["not-allowed", "service-not-allowed", "audio-capture"];
+      const overLimit = this.limitSec > 0 && this.elapsedSec() >= this.limitSec;
+      if (!overLimit && fatal.indexOf(this.errCode) === -1) {
+        if (this.errCode === "no-speech") this.errCode = "";
+        this.restarts++;
+        if (this.restarts <= 40) {
+          try { r.start(); return; } catch (e) {}
+        }
+      }
+      this.finish();
+    };
     this.obj = r;
     try { r.start(); } catch (e) { this.errCode = "start-failed"; return false; }
     this.timer = setInterval(() => { if (this.onUpdate) this.onUpdate(); }, 250);
@@ -345,7 +363,9 @@ function renderIntro() {
     (isText ? "タイピングモードでは、明瞭度・流暢さは測定されません。"
             : "静かな場所でお試しください。最初の録音時にマイクの使用許可を求められたら「許可」を押してください。") + "</p>" +
     '<div id="ping-result" style="margin-top:14px"></div>' +
-    '<button id="btn-ping" style="display:block;width:100%;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:700;text-decoration:underline;padding:6px">採点AIの接続テスト（運営者用）</button>';
+    (isDebugMode()
+      ? '<button id="btn-ping" style="display:block;width:100%;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:700;text-decoration:underline;padding:6px">採点AIの接続テスト（運営者用）</button>'
+      : "");
 
   $("btn-start").onclick = async () => {
     state.reading = []; state.comp = []; state.talk = []; state.taskIndex = 0;
@@ -357,7 +377,7 @@ function renderIntro() {
     else showCountdown("種目1 音読", "英文を声に出して読んでください", renderReading);
   };
   $("btn-mode").onclick = () => { state.mode = state.mode === "text" ? "voice" : "text"; renderIntro(); };
-  $("btn-ping").onclick = pingCheck;
+  if ($("btn-ping")) $("btn-ping").onclick = pingCheck;
 }
 
 /* --- 種目1 音読 --- */
@@ -581,7 +601,7 @@ async function pingCheck() {
       return;
     }
     if (j && j.ping === "OK") {
-      box.innerHTML = '<div class="ok-box"><b>OK：採点AIに接続できました</b><br><span style="font-size:12px;color:var(--sub)">モデル: ' + esc(j.model) + " ／ キー: " + esc(j.keyPrefix) + "</span></div>";
+      box.innerHTML = '<div class="ok-box"><b>OK：採点AIに接続できました</b><br><span style="font-size:12px;color:var(--sub)">モデル: ' + esc(j.model) + "</span></div>";
       return;
     }
     const reason = j ? (j.reason || j.error || "") + (j.tried ? "／" + JSON.stringify(j.tried) : "") : raw.slice(0, 300);
